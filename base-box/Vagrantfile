@@ -1,0 +1,77 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# This Vagrantfile requires a 2 step setup
+# vagrant up ; vagrant reload
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://vagrantcloud.com/search.
+  config.vm.box = "centos/7"
+
+  # Disable automatic box update checking. If you disable this, then
+  # boxes will only be checked for updates when the user runs
+  # `vagrant box outdated`. This is not recommended.
+  config.vm.box_check_update = false
+
+  config.ssh.insert_key = false
+
+  # Virtualbox specific config (memory, cpu)
+  config.vm.provider "virtualbox" do |vb|
+     # Display the VirtualBox GUI when booting the machine
+     #vb.gui = true
+  
+     # Customize the amount of memory on the VM:
+     vb.memory = "2048"
+
+     # num of cpus
+     vb.cpus = 1
+  end
+
+ # fix for max cpu?
+ $enable_serial_logging = false
+
+  # run an inline shell script
+  config.vm.provision "shell", inline: <<-SHELL
+
+    set +x
+
+    # un-comment line in sshd_config to enable both authorized_keys and authorized_keys2
+    sed -i -e s/^AuthorizedKeysFile/'#AuthorizedKeysFile '/g /etc/ssh/sshd_config
+    # restart sshd to active the config change
+    systemctl restart sshd.service
+
+    curl https://raw.githubusercontent.com/mitchellh/vagrant/master/keys/vagrant.pub -o ~vagrant/.ssh/authorized_keys
+    chmod 700 ~vagrant/.ssh
+    chmod 600 ~vagrant/.ssh/authorized_keys
+    chown -R vagrant:vagrant ~vagrant/.ssh
+
+    # install vguest addition
+    curl http://download.virtualbox.org/virtualbox/5.2.20/VBoxGuestAdditions_5.2.20.iso -o /opt/VBoxGuestAdditions_4.2.8.iso
+    mount /opt/VBoxGuestAdditions_4.2.8.iso -o loop /mnt
+    yum install -y gcc binutils make perl bzip2 kernel-devel-`uname -r`
+    sh /mnt/VBoxLinuxAdditions.run --nox11
+    rm /opt/*.iso
+
+    yum install -y git rpm-build zip unzip lzma groovy
+
+    # install docker-ce
+    yum install -y yum-utils device-mapper-persistent-data lvm2
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    yum install -y docker-ce-18.06.1.ce-3.el7
+    usermod -aG docker vagrant
+    systemctl enable docker
+
+    # defaut timezone to PST
+    mv /etc/localtime /etc/localtime.sav
+    ln -s /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+  SHELL
+end

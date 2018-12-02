@@ -1,0 +1,62 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# This Vagrantfile requires a 2 step setup
+# vagrant up ; vagrant reload
+
+# All Vagrant configuration is done below. The "2" in Vagrant.configure
+# configures the configuration version (we support older styles for
+# backwards compatibility). Please don't change it unless you know what
+# you're doing.
+Vagrant.configure("2") do |config|
+  # The most common configuration options are documented and commented below.
+  # For a complete reference, please see the online documentation at
+  # https://docs.vagrantup.com.
+
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://vagrantcloud.com/search.
+  # config.vm.box = "centos7-custom"
+  config.vm.box = "jill-sato/centos7"
+  config.vm.box_version = "1.0.0"
+
+  # Disable automatic box update checking. If you disable this, then
+  # boxes will only be checked for updates when the user runs
+  # `vagrant box outdated`. This is not recommended.
+  config.vm.box_check_update = false
+
+  # Create a private network, which allows host-only access to the machine
+  # using a specific IP.
+  config.vm.network "private_network", ip: "192.168.33.101"
+
+  config.vm.synced_folder "~/work", "/work"
+
+  # Virtualbox specific config (memory, cpu)
+  config.vm.provider "virtualbox" do |vb|
+     # Display the VirtualBox GUI when booting the machine
+     #vb.gui = true
+  
+     # Customize the amount of memory on the VM:
+     vb.memory = "2048"
+
+     # num of cpus
+     vb.cpus = 1
+  end
+
+  # fix for cpu  max?
+  $enable_serial_logging = false
+
+  # copy local ssh key to my authorized_keys2
+  config.vm.provision "file", source: "~/.ssh/id_rsa", destination: "~/.ssh/id_rsa"
+  config.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~/.ssh/id_rsa.pub"
+  config.vm.provision "file", source: "~/.ssh/id_rsa.pub", destination: "~/.ssh/authorized_keys2"
+  config.vm.provision "file", source: "~/.gitconfig", destination: "~/.gitconfig"
+  config.vm.provision "file", source: "~/vagrant/.bashrc-vagrant", destination: "~/.bashrc"
+  config.vm.provision "file", source: "~/vagrant/.bash_profile-vagrant", destination: "~/.bash_profile"
+  config.vm.provision "file", source: "~/vagrant/.git-prompt.sh", destination: "~/.git-prompt.sh"
+  config.vm.provision "file", source: "~/.kube/config-kubelink", destination: "~/.kube/config"
+
+  config.vm.provision "shell", inline: <<-SHELL
+    curl -k -L https://storage.googleapis.com/kubernetes-release/release/v1.12.2/bin/linux/amd64/kubectl -o /usr/bin/kubectl
+    chmod +x /usr/bin/kubectl
+  SHELL
+end
